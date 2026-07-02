@@ -145,6 +145,6 @@ npx skills remove --all
 
 ## Skills in this repo
 
-| Skill | Description |
-| ----- | ----------- |
-|       |             |
+| Skill             | Description                                                                                                                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ts-code-quality` | Sets up TypeScript code quality tooling (ESLint flat config, Prettier, TypeScript configs, VS Code settings, EditorConfig, Knip) for TypeScript projects. Detects Next.js, TanStack Start, React, Fastify, Express, and Node.js. |
