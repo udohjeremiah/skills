@@ -7,9 +7,8 @@
   },
   "editor.rulers": [80],
   "editor.tabSize": 2,
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "typescript.preferences.quoteStyle": "double",
-  "javascript.preferences.quoteStyle": "double",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "js/ts.preferences.quoteStyle": "double",
   "eslint.validate": [
     "javascript",
     "javascriptreact",
