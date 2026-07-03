@@ -73,23 +73,24 @@ detected manager in all install commands and script examples.
 
 ## Composition model
 
-ESLint configs are flat config arrays that get spread together:
+Config composition differs between monorepo and single-package projects:
 
-```
-base.config.js         ← always (shared rules for all projects)
-  + react layer        ← only for react / tanstack-start (adds JSX, a11y rules)
-  + framework layer    ← one of: nextjs / tanstack-start / node / fastify / express
-  + tailwind.config.js ← only if tailwindcss + react-based framework
-```
+**Monorepo** (Turborepo + pnpm workspaces):
+Create shared config packages (`packages/eslint-config/` and
+`packages/typescript-config/`) that each app references. Each app's
+`eslint.config.js` imports from the shared package, and each app's
+`tsconfig.json` extends the shared tsconfig. This avoids duplication and
+cache misses. (See existing `packages/` convention in the project.)
 
-> **Next.js note:** Since `eslint-config-next` already bundles React + React Hooks
-> rules, Next.js gets `base + nextjs` — no separate `react` layer.
-> TanStack Start IS NOT Next.js, so it still needs the `react` layer.
+**Single-package** (standalone project):
+All config lives inline in root files — no `eslint/` or `tsconfig/`
+subdirectory. The root `eslint.config.js` defines each layer as a separate
+const and merges them. The root `tsconfig.json` has a single
+`compilerOptions` block where options are grouped and labeled with comments
+showing which layer they come from.
 
-In practice, the agent should **copy the relevant asset files** into the
-target project's directory structure, then create the project's
-`eslint.config.js` that imports and composes them. The tsconfig files are
-used via `extends`.
+In both cases, use the `assets/` files as the source of truth for config
+content.
 
 ## Existing projects
 
@@ -108,12 +109,12 @@ the appropriate layer config or as a separate config object in
 ### Existing tsconfig.json
 
 If the project already has a `tsconfig.json` with custom `compilerOptions`:
-- Copy the relevant tsconfig variants (base, node, react, etc.) to
-  `tsconfig/` as described below.
-- Update the project's `tsconfig.json` to `extends` the correct variant.
-- Preserve the project's existing `compilerOptions` (paths, outDir, etc.),
-  only adding missing strictness flags from the variant.
-- Add `include`/`exclude` patterns matching the project's structure.
+- For **single-package**: Merge the existing compilerOptions into the inline
+  `tsconfig.json`, preserving the project's existing `paths`, `outDir`, etc.
+  Add missing strictness flags from the relevant layer.
+- For **monorepo**: Copy the relevant tsconfig variants to `packages/typescript-config/`
+  as described below. Update each app's `tsconfig.json` to extend its variant,
+  preserving existing `compilerOptions`.
 
 ### Existing package.json
 
@@ -194,80 +195,230 @@ covered by base settings):
 
 ### 3. TypeScript configs
 
-Copy the relevant tsconfig asset files to the project's `tsconfig/` directory
-(or alongside the project's `tsconfig.json`). The choice of which variant
-depends on the detection step above.
+**For single-package projects:**
 
-**TypeScript version**: Always install the latest TypeScript version.
-Do not pin to a specific major — use whatever is current.
+Create a single root `tsconfig.json` with a merged `compilerOptions` block.
+Read the relevant tsconfig asset files and merge their `compilerOptions`
+together (later layers override earlier ones). Group options by layer with
+comments:
 
-**File extension convention**: Use `.js` for all config files when
-`"type": "module"` is set. Do NOT use `.mjs` extension — `.js` is correct
-in ESM packages.
+```jsonc
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // ---- Base ----
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": false,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUncheckedSideEffectImports": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "strictNullChecks": true,
 
-**No jsx/tsx in non-React projects**: For projects without React (base,
-node, fastify, express variants), the `include` pattern must be only
-`src/**/*.ts` — no `.tsx` or `.jsx` references. React-based variants
-(react, nextjs, tanstack-start) should use `src/**/*.{ts,tsx}`.
+    // ---- React ----
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "target": "ES2022",
 
-Use `extends` in the project's actual `tsconfig.json`:
+    // ---- Next.js ----
+    "incremental": true,
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
+```
+
+- `include` and `exclude` come from the framework-specific asset file.
+- If no framework layer, use the table below for `include`:
+  - React-based (react / nextjs / tanstack-start): `src/**/*.{ts,tsx}`
+  - Non-React (base / node / fastify / express): `src/**/*.ts`
+- Add the project's existing `paths`, `outDir`, `rootDir` from the original
+  `tsconfig.json` if this is an existing project.
+
+**For monorepos:**
+Create `packages/typescript-config/` with shared tsconfig files. Copy the
+relevant asset files there. Each app's `tsconfig.json` then extends the
+shared variant via workspace protocol:
 
 ```json
 {
-  "extends": "./tsconfig/tsconfig.<variant>.json",
+  "extends": "@workspace/typescript-config/nextjs.json",
   "compilerOptions": {
     "paths": { "@/*": ["./src/*"] },
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.{ts,tsx}"]
 }
 ```
 
-For monorepos, each package's `tsconfig.json` extends its variant. Create the
-shared eslint config as a `packages/eslint-config/` package (exporting
-`base.js`, `react.js`, `node.js`, etc.) and the shared tsconfig as
-`packages/typescript-config/` (exporting `base.json`, `react.json`,
-`node.json`, etc.), following the workspace package convention used in
-projects like Turborepo. This allows packages to reference them via
-workspace protocol (`"@workspace/eslint-config": "workspace:*"`).
+Do **not** create root-level `tsconfig.json` for monorepos — Turborepo
+recommends against it (causes cache misses).
+
+**For both layouts:**
+- **TypeScript version**: Always install the latest. Do not pin to a specific
+  major — use whatever is current.
+- **File extension convention**: Use `.js` for all config files when
+  `"type": "module"` is set. Do NOT use `.mjs` extension.
+- **No jsx/tsx in non-React projects**: For projects without React, the
+  `include` pattern must be only `src/**/*.ts` — no `.tsx` or `.jsx`.
 
 ### 4. ESLint config
 
-Copy the relevant ESLint asset files to `<project-root>/eslint/`. Create
-`<project-root>/eslint.config.js` that imports the selected layers based on
-the detection table above:
+**For single-package projects:**
 
-**For Next.js:**
+Create a single root `eslint.config.js` with all layers defined inline.
+Read the relevant ESLint asset files and merge their content into one file.
+Each layer is a separate const, grouped by a comment header:
+
 ```js
-import base from "./eslint/base.config.js";
-import nextjs from "./eslint/nextjs.config.js";
+import js from "@eslint/js";
+import prettier from "eslint-config-prettier/flat";
+import * as depend from "eslint-plugin-depend";
+import { importX } from "eslint-plugin-import-x";
+import onlyWarn from "eslint-plugin-only-warn";
+import * as perfectionist from "eslint-plugin-perfectionist";
+import promise from "eslint-plugin-promise";
+import regexp from "eslint-plugin-regexp";
+import security from "eslint-plugin-security";
+import * as sonarjs from "eslint-plugin-sonarjs";
+import unicorn from "eslint-plugin-unicorn";
+import unusedImports from "eslint-plugin-unused-imports";
+import { globalIgnores } from "eslint/config";
+import * as tseslint from "typescript-eslint";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+// ---- Base config ----
+const baseConfig = [
+  js.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+  depend.configs["flat/recommended"],
+  importX.flatConfigs.recommended,
+  importX.flatConfigs.typescript,
+  perfectionist.configs["recommended-natural"],
+  security.configs.recommended,
+  promise.configs["flat/recommended"],
+  regexp.configs.recommended,
+  sonarjs.configs.recommended,
+  unicorn.configs.recommended,
+  {
+    languageOptions: {
+      parserOptions: { projectService: true },
+    },
+    plugins: { onlyWarn, "unused-imports": unusedImports },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "import-x/no-default-export": "error",
+      "import-x/order": "off",
+      "promise/no-multiple-resolved": "error",
+      "promise/prefer-await-to-callbacks": "error",
+      "promise/prefer-await-to-then": "error",
+      "promise/prefer-catch": "error",
+      "promise/spec-only": "error",
+      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-vars": [
+        "warn",
+        {
+          args: "after-used",
+          argsIgnorePattern: "^_",
+          vars: "all",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+    settings: {
+      "import-x/resolver": {
+        node: true,
+        typescript: { project: ["**/tsconfig.json"] },
+      },
+    },
+  },
+  prettier,
+  globalIgnores(["dist/**", "build/**", ".next/**", "out/**"]),
+];
+
+// ---- Next.js config ----
+const nextjsConfig = [
+  ...nextVitals,
+  ...nextTs,
+  {
+    files: [
+      "**/page.tsx", "**/layout.tsx", "**/not-found.tsx",
+      "**/error.tsx", "**/loading.tsx",
+      "next.config.*", "eslint.config.*",
+    ],
+    rules: { "import-x/no-default-export": "off" },
+  },
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+];
+
+export default [...baseConfig, ...nextjsConfig];
+```
+
+Combine imports from all needed layers at the top. Always spread
+`baseConfig` first. The specific framework/exports vary by detection:
+
+Detection table for ESLint layers:
+
+| If dep found                 | Layers                                      |
+| ---------------------------- | ------------------------------------------- |
+| `next`                       | base + nextjs                               |
+| `@tanstack/react-start`      | base + react + tanstack-start               |
+| `fastify`                    | base + node + fastify                       |
+| `express`                    | base + node + express                       |
+| `react` (none of above)      | base + react                                |
+| none, but `"type": "module"` | base + node                                 |
+| otherwise                    | base                                        |
+
+If Tailwind is detected alongside a React-based framework, add a
+`// ---- Tailwind config ----` section with the same content as
+`assets/eslint/tailwind.config.js`.
+
+> **Next.js note:** `eslint-config-next` already bundles React + React Hooks
+> rules, so Next.js gets `base + nextjs` only — no separate react layer.
+> TanStack Start IS NOT Next.js and still needs the react layer.
+
+> **Important**: Now that there's no `eslint/` subdirectory, generated config
+> files won't be picked up by the project's own ESLint. No need to add
+> `eslint/` to `globalIgnores()`.
+
+**For monorepos:**
+Create `packages/eslint-config/` with shared config files. Copy the relevant
+asset files there (exporting `base.js`, `react.js`, `node.js`, etc.).
+Each app's `eslint.config.js` imports from the shared package:
+
+```js
+import base from "@workspace/eslint-config/base.js";
+import nextjs from "@workspace/eslint-config/nextjs.js";
 
 export default [...base, ...nextjs];
 ```
 
-**For TanStack Start or plain React:**
-```js
-import base from "./eslint/base.config.js";
-import react from "./eslint/react.config.js";
-import tanstackStart from "./eslint/tanstack-start.config.js";
-
-export default [...base, ...react, ...tanstackStart];
-```
-
-**For backend frameworks (express / fastify):**
-```js
-import base from "./eslint/base.config.js";
-import node from "./eslint/node.config.js";
-import express from "./eslint/express.config.js";
-
-export default [...base, ...node, ...express];
-```
-
-Always spread `base.config.js` first. For Next.js, do **not** include the
-`react` layer — `eslint-config-next` already bundles React + React Hooks rules.
-For TanStack Start and plain React, include both `base + react` (and optionally
-`tanstack-start`).
+Do **not** create root-level `eslint.config.js` for monorepos — Turborepo
+recommends against it (causes cache misses).
 
 ### 5. Prettier
 
@@ -345,26 +496,31 @@ some users have existing CI pipelines.
 
 ## Example scenarios
 
-### Plain TS library
+### Plain TS library (single-package)
 
 - Detection: no framework deps, no tailwind
-- Configs: base eslint + node eslint, tsconfig.node.json
+- Configs: single `eslint.config.js` with base + node sections, single
+  `tsconfig.json` with base + node compilerOptions merged by layer
 - Installed packages: core 9 + node plugins
 
-### Next.js app with Tailwind
+### Next.js app with Tailwind (single-package)
 
 - Detection: next, tailwindcss
-- Configs: base eslint + nextjs eslint + tailwind eslint,
-  tsconfig.nextjs.json, .prettierrc.json (with tailwind plugin merged)
+- Configs: single `eslint.config.js` with base + nextjs + tailwind sections,
+  single `tsconfig.json` with base + react + nextjs compilerOptions merged,
+  `.prettierrc.json` (with tailwind plugin merged)
 - Installed packages: core 9 + react/next + tailwind
 
 ### TanStack Start monorepo frontend + Fastify backend
 
 - Root: no root configs (Turborepo guidance)
 - Frontend pkg (react + tanstack-start + tailwind):
-  base + react + tanstack-start + tailwind eslint,
-  tsconfig.tanstack-start.json, .prettierrc.json (with tailwind plugin merged)
+  shared eslint-config (base + react + tanstack-start + tailwind),
+  shared typescript-config (tanstack-start),
+  `.prettierrc.json` (with tailwind plugin merged)
 - Backend pkg (fastify):
-  base + node + fastify eslint, tsconfig.fastify.json
-- Shared config packages: `packages/eslint-config/` and `packages/typescript-config/`
+  shared eslint-config (base + node + fastify),
+  shared typescript-config (fastify)
+- Shared config packages: `packages/eslint-config/` and
+  `packages/typescript-config/`
 - Installed packages: core 9 + all react + all node + tailwind
