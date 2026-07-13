@@ -6,8 +6,7 @@ description: >-
   recommendations. Use this when the user wants to configure linting,
   formatting, or type-checking rules, set up a .vscode folder, add or
   recommend ESLint plugins, or improve code quality tooling in a TypeScript
-  project. Does not handle commit hooks, commitlint, or lint-staged — that's
-  a separate skill.
+  project.
 ---
 
 # TS Code Quality Skill
