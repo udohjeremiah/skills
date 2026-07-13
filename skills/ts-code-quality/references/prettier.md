@@ -21,7 +21,7 @@ Always use the `.prettierrc.json` extension (not bare `.prettierrc`). The
 | `endOfLine`     | `lf`     | Cross-platform consistency.                                                                 |
 | `arrowParens`   | `always` | Required by TypeScript-ESLint for type annotations on arrow params.                         |
 
-## Tailwind variant (`assets/prettier/.prettierrc.tailwind.json`)
+## Tailwind variant (`assets/prettier/tailwind.json`)
 
 Merged into the base config when Tailwind is detected:
 

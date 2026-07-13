@@ -61,13 +61,13 @@ Read `package.json`, `dependencies` and `devDependencies`:
 
 | If dep found                 | ESLint layer           | TypeScript config              |
 | ---------------------------- | ---------------------- | ------------------------------ |
-| `next`                       | base + nextjs          | `tsconfig.nextjs.json`         |
-| `@tanstack/react-start`      | react + tanstack-start | `tsconfig.tanstack-start.json` |
-| `fastify`                    | node + fastify         | `tsconfig.fastify.json`        |
-| `express`                    | node + express         | `tsconfig.express.json`        |
-| `react` (none of above)      | react only             | `tsconfig.react.json`          |
-| none, but `"type": "module"` | node only              | `tsconfig.node.json`           |
-| otherwise                    | base only              | `tsconfig.base.json`           |
+| `next`                       | base + nextjs          | `nextjs.json`         |
+| `@tanstack/react-start`      | react + tanstack-start | `tanstack-start.json` |
+| `fastify`                    | node + fastify         | `fastify.json`        |
+| `express`                    | node + express         | `express.json`        |
+| `react` (none of above)      | react only             | `react.json`          |
+| none, but `"type": "module"` | node only              | `node.json`           |
+| otherwise                    | base only              | `base.json`           |
 
 > **Important:** `next` already bundles React + React Hooks rules via `eslint-config-next`.
 > Do **not** add the `react` layer for Next.js projects — only `base + nextjs`.
@@ -76,8 +76,8 @@ Read `package.json`, `dependencies` and `devDependencies`:
 
 If `tailwindcss` is in deps:
 
-- Merge `assets/eslint/tailwind.config.js`
-- Merge `assets/prettier/.prettierrc.tailwind.json`'s fields into the
+- Merge `assets/eslint/tailwind.js`
+- Merge `assets/prettier/tailwind.json`'s fields into the
   base `.prettierrc.json` (adds `prettier-plugin-tailwindcss` and `tailwindFunctions`)
 - Detect the project's CSS entry file — scan CSS files for
   `@import "tailwindcss"` to find it. Set the relative path in
@@ -417,7 +417,7 @@ framework detection table in the [Detection logic](#2-per-package-framework-dete
 
 If Tailwind is detected alongside a React-based framework, add a
 `// ---- Tailwind config ----` section with the same content as
-`assets/eslint/tailwind.config.js`.
+`assets/eslint/tailwind.js`.
 
 > **Important**: Now that there's no `eslint/` subdirectory, generated config
 > files won't be picked up by the project's own ESLint. No need to add
@@ -442,7 +442,7 @@ recommends against it (causes cache misses).
 
 Copy `assets/prettier/.prettierrc.json` to `<project-root>/.prettierrc.json`.
 If Tailwind is detected, merge the fields from
-`assets/prettier/.prettierrc.tailwind.json` into the base config so the
+`assets/prettier/tailwind.json` into the base config so the
 final file includes `"plugins": ["prettier-plugin-tailwindcss"]` and
 `"tailwindFunctions"`. Also add a `tailwindStylesheet` field with the
 correct path to the project's main CSS entry — detect the actual CSS
