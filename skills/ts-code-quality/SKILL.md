@@ -386,7 +386,7 @@ const baseConfig = [
     },
   },
   prettier,
-  globalIgnores(["dist/**", "build/**", ".next/**", "out/**", ".agents/**"]),
+  globalIgnores(["dist/**", ".agents/**"]),
 ];
 
 // ---- Next.js config ----
@@ -419,9 +419,19 @@ If Tailwind is detected alongside a React-based framework, add a
 `// ---- Tailwind config ----` section with the same content as
 `assets/eslint/tailwind.js`.
 
-> **Important**: Now that there's no `eslint/` subdirectory, generated config
-> files won't be picked up by the project's own ESLint. No need to add
-> `eslint/` to `globalIgnores()`.
+**Add per-detection `globalIgnores` entries** based on the detected
+framework and package manager:
+
+| Detection          | `globalIgnores` entries                                                   |
+| ------------------ | ------------------------------------------------------------------------- |
+| Next.js            | `".next/**"`, `"out/**"`, `"build/**"`, `"next-env.d.ts"`                 |
+| TanStack Start     | `"**/routeTree.gen.ts"`, `".netlify/**"`, `".output/**"`, `".tanstack/**"`, `".vinxi/**"`, `"dist-ssr/**"` |
+| Package manager    | Lockfile from [detection table](#2-package-manager-detection)             |
+
+Merge these into the existing `globalIgnores()` call (or add a separate one).
+The `base.js` asset already includes universal entries (`dist/**`,
+`.agents/**`), and framework-specific asset files already include their own
+entries when composed as separate config objects.
 
 **For monorepos:**
 Create `packages/eslint-config/` with shared config files. Copy the relevant
@@ -450,21 +460,23 @@ entry file in the project (look for `globals.css`, `index.css`, `styles.css` in
 common locations) and use its path relative to the project/package root. Always
 use the `.json` extension — do NOT omit it.
 
-Also create a `.prettierignore`:
+Also create a `.prettierignore` with **universal** entries and
+**per-detection** additions:
 
+**Universal** (always include):
 ```
 .agents
 dist
-build
-.next
-out
-pnpm-lock.yaml
-package-lock.json
-yarn.lock
-bun.lock
-**/routeTree.gen.ts
 coverage
 ```
+
+**Per-detection** (add based on detected framework and package manager):
+
+| Detection          | `.prettierignore` entries                                                    |
+| ------------------ | ---------------------------------------------------------------------------- |
+| Next.js            | `.next`, `out`, `build`                                                      |
+| TanStack Start     | `**/routeTree.gen.ts`                                                        |
+| Package manager    | Lockfile from [detection table](#2-package-manager-detection)                |
 
 ### 6. Knip
 
