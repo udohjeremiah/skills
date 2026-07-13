@@ -16,16 +16,10 @@
     "typescript",
     "typescriptreact"
   ],
-  "files.associations": {
-    "*.css": "tailwindcss"
-  },
   "js/ts.preferences.quoteStyle": "double",
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "search.exclude": {
-    "**/.next": true,
     "**/dist": true,
-    "**/node_modules": true,
-    "**/pnpm-lock.yaml": true,
-    "**/routeTree.gen.ts": true
+    "**/node_modules": true
   }
 }

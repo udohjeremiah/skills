@@ -176,18 +176,32 @@ Copy the `.vscode/` directory:
 
 Then apply these **per-detection** modifications:
 
-**Tailwind CSS** — If Tailwind is detected, add `tailwindCSS.experimental.configFile`
-pointing to the project's main CSS entry point. Detect the actual CSS entry
-file in the project (look for `globals.css`, `global.css`, `index.css`,
-`styles.css` in common locations) and use its path relative to the project
-or package root.
+**Tailwind CSS** — If Tailwind is detected:
+- Merge `"*.css": "tailwindcss"` into `files.associations`
+- Add `"tailwindCSS.experimental.configFile"` pointing to the project's main
+  CSS entry point. Detect the actual CSS entry file in the project (look for
+  `globals.css`, `global.css`, `index.css`, `styles.css` in common locations)
+  and use its path relative to the project or package root.
+
+**Package manager lockfile** — Detect the actual package manager (read
+`packageManager` field or check for lock files) and add the correct entry
+to `search.exclude`:
+
+| Package manager | Lock file              |
+| --------------- | ---------------------- |
+| pnpm            | `**/pnpm-lock.yaml`    |
+| npm             | `**/package-lock.json` |
+| yarn            | `**/yarn.lock`         |
+
+**Next.js** — If `next` is detected, add `"**/.next": true` to
+`search.exclude`.
 
 **TanStack Start** — If `@tanstack/react-start` is detected, merge these
-entries to ignore the generated route file (`search.exclude` already
-covered by base settings):
+entries to ignore the generated route file:
 
 ```json
 {
+  "search.exclude": { "**/routeTree.gen.ts": true },
   "files.watcherExclude": { "**/routeTree.gen.ts": true },
   "files.readonlyInclude": { "**/routeTree.gen.ts": true }
 }
