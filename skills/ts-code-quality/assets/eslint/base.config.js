@@ -66,7 +66,7 @@ const config = [
     },
   },
   prettier,
-  globalIgnores(["dist/**", "build/**", ".next/**", "out/**"]),
+  globalIgnores(["dist/**", "build/**", ".next/**", "out/**", ".agents/**"]),
 ];
 
 export default config;

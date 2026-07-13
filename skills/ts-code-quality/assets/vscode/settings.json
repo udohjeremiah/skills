@@ -19,6 +19,7 @@
   "js/ts.preferences.quoteStyle": "double",
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "search.exclude": {
+    "**/.agents": true,
     "**/dist": true,
     "**/node_modules": true
   }

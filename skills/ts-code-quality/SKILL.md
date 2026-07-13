@@ -13,20 +13,25 @@ description: >-
 # TS Code Quality Skill
 
 Sets up best-in-class ESLint, Prettier, TypeScript, EditorConfig, and Knip
-configuration for TypeScript projects, plus matching VS Code
-settings and extension recommendations.
+configuration for TypeScript projects, plus matching VS Code settings and
+extension recommendations.
 
 ## Detection logic (run first)
 
 Run detection per **package** (each workspace in a monorepo, or once for a
-single-repo project). Read the target project's `package.json`(s) and
-workspace config first.
+single-repo project). Read the target project's `package.json`(s) and workspace
+config first.
 
 ### 1. Is this a monorepo?
 
-Check if `pnpm-workspace.yaml` has a `packages` field listing multiple
-workspace directories, or if `turbo.json` defines workspace tasks via a
-`pipeline` or `tasks` block. If either has workspace definitions:
+Check these in order:
+
+1. Does the root `package.json` have a `workspaces` array? (pnpm, npm, yarn, bun)
+2. Does `pnpm-workspace.yaml` have a `packages` field?
+3. Does any common monorepo config file exist?
+   (`turbo.json`, `nx.json`, `lerna.json`, `rush.json`, `moon.json`)
+
+If any indicates multiple packages:
 
 - Per-package detection runs for each workspace to choose the right
   ESLint + tsconfig variant.
@@ -35,9 +40,25 @@ workspace directories, or if `turbo.json` defines workspace tasks via a
 - Do **not** create root-level `tsconfig.json` or `eslint.config.js` —
   Turborepo recommends against them as they cause cache misses.
 
-### 2. Per-package framework detection
+### 2. Package manager detection
 
-Read `package.json` `dependencies` and `devDependencies`:
+The project is already set up, so the package manager can be detected by
+checking for lock files or the `packageManager` field in `package.json`:
+
+| Lock file           | Package manager |
+| ------------------- | --------------- |
+| `pnpm-lock.yaml`    | pnpm            |
+| `package-lock.json` | npm             |
+| `yarn.lock`         | yarn            |
+| `bun.lock`          | bun             |
+
+If none is found, also check `package.json` for the `packageManager` field
+(e.g., `"packageManager": "pnpm@10.8.0"`). Use the detected package manager
+in all commands.
+
+### 3. Per-package framework detection
+
+Read `package.json`, `dependencies` and `devDependencies`:
 
 | If dep found                 | ESLint layer           | TypeScript config              |
 | ---------------------------- | ---------------------- | ------------------------------ |
@@ -52,30 +73,23 @@ Read `package.json` `dependencies` and `devDependencies`:
 > **Important:** `next` already bundles React + React Hooks rules via `eslint-config-next`.
 > Do **not** add the `react` layer for Next.js projects — only `base + nextjs`.
 
-### 3. Tailwind check
+### 4. Tailwind check
 
-If `tailwindcss` is in deps AND the framework layer is react-based (react /
-nextjs / tanstack-start):
+If `tailwindcss` is in deps:
 
 - Merge `assets/eslint/tailwind.config.js`
 - Merge `assets/prettier/.prettierrc.tailwind.json`'s fields into the
-  base `.prettierrc.json` (adds `prettier-plugin-tailwindcss` and
-  `tailwindFunctions`). Also add `tailwindStylesheet` pointing to the
-  project's main CSS entry — detect the actual CSS entry file in the
-  project (look for files like `globals.css`, `index.css`, `styles.css` in
-  common locations) and use its path relative to the project/package root.
-
-### 4. Package manager detection
-
-**Default to pnpm** unless the user explicitly states they use npm or yarn.
-Read `packageManager` field or check for lock files to confirm. Use the
-detected manager in all install commands and script examples.
+  base `.prettierrc.json` (adds `prettier-plugin-tailwindcss` and `tailwindFunctions`)
+- Detect the project's CSS entry file — scan CSS files for
+  `@import "tailwindcss"` to find it. Set the relative path in
+  `tailwindStylesheet` for the Prettier config and
+  `tailwindCSS.experimental.configFile` for VS Code.
 
 ## Composition model
 
 Config composition differs between monorepo and single-package projects:
 
-**Monorepo** (Turborepo + pnpm workspaces):
+**Monorepo:**
 Create shared config packages (`packages/eslint-config/` and
 `packages/typescript-config/`) that each app references. Each app's
 `eslint.config.js` imports from the shared package, and each app's
@@ -109,6 +123,7 @@ the appropriate layer config or as a separate config object in
 ### Existing tsconfig.json
 
 If the project already has a `tsconfig.json` with custom `compilerOptions`:
+
 - For **single-package**: Merge the existing compilerOptions into the inline
   `tsconfig.json`, preserving the project's existing `paths`, `outDir`, etc.
   Add missing strictness flags from the relevant layer.
@@ -125,6 +140,7 @@ the existing `scripts` block.
 ### Existing .vscode/
 
 If `.vscode/settings.json` or `.vscode/extensions.json` already exist:
+
 - Merge the recommended settings into the existing file.
 - Preserve any custom settings the user already has.
 - Only add the extension IDs that are missing from `extensions.json`.
@@ -132,15 +148,19 @@ If `.vscode/settings.json` or `.vscode/extensions.json` already exist:
 
 ### Existing monorepo config
 
-If `turbo.json` or `pnpm-workspace.yaml` already exist:
+If any monorepo config already exists (`turbo.json`, `pnpm-workspace.yaml`,
+`workspaces` in root `package.json`, `nx.json`, `lerna.json`, `rush.json`,
+`moon.json`):
+
 - Add the new tasks (`lint`, `lint:fix`, `typecheck`, `format`, `knip`) to
-  the existing `turbo.json` pipeline.
-- Ensure `pnpm-workspace.yaml` includes the packages that need tooling.
+  `turbo.json` if it exists.
+- Ensure the workspace config covers the packages that need tooling.
 - Do not restructure the existing workspace layout.
 
 ### Existing .prettierrc / .editorconfig
 
 If `.prettierrc.json` (or `.prettierrc` / `.prettierrc.yaml`) already exists:
+
 - Compare the existing settings with the skill's recommended settings.
 - Add missing options, but keep the user's existing preferences.
 
@@ -177,11 +197,10 @@ Copy the `.vscode/` directory:
 Then apply these **per-detection** modifications:
 
 **Tailwind CSS** — If Tailwind is detected:
+
 - Merge `"*.css": "tailwindcss"` into `files.associations`
-- Add `"tailwindCSS.experimental.configFile"` pointing to the project's main
-  CSS entry point. Detect the actual CSS entry file in the project (look for
-  `globals.css`, `global.css`, `index.css`, `styles.css` in common locations)
-  and use its path relative to the project or package root.
+- Add `"tailwindCSS.experimental.configFile"` pointing to the project's CSS
+  entry file. Scan CSS files for `@import "tailwindcss"` to locate it.
 
 **Package manager lockfile** — Detect the actual package manager (read
 `packageManager` field or check for lock files) and add the correct entry
@@ -192,6 +211,7 @@ to `search.exclude`:
 | pnpm            | `**/pnpm-lock.yaml`    |
 | npm             | `**/package-lock.json` |
 | yarn            | `**/yarn.lock`         |
+| bun             | `**/bun.lock`          |
 
 **Next.js** — If `next` is detected, add `"**/.next": true` to
 `search.exclude`.
@@ -251,15 +271,10 @@ comments:
 
     // ---- Next.js ----
     "incremental": true,
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": ["node_modules"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"],
 }
 ```
 
@@ -291,6 +306,7 @@ Do **not** create root-level `tsconfig.json` for monorepos — Turborepo
 recommends against it (causes cache misses).
 
 **For both layouts:**
+
 - **TypeScript version**: Always install the latest. Do not pin to a specific
   major — use whatever is current.
 - **File extension convention**: Use `.js` for all config files when
@@ -371,7 +387,7 @@ const baseConfig = [
     },
   },
   prettier,
-  globalIgnores(["dist/**", "build/**", ".next/**", "out/**"]),
+  globalIgnores(["dist/**", "build/**", ".next/**", "out/**", ".agents/**"]),
 ];
 
 // ---- Next.js config ----
@@ -380,9 +396,13 @@ const nextjsConfig = [
   ...nextTs,
   {
     files: [
-      "**/page.tsx", "**/layout.tsx", "**/not-found.tsx",
-      "**/error.tsx", "**/loading.tsx",
-      "next.config.*", "eslint.config.*",
+      "**/page.tsx",
+      "**/layout.tsx",
+      "**/not-found.tsx",
+      "**/error.tsx",
+      "**/loading.tsx",
+      "next.config.*",
+      "eslint.config.*",
     ],
     rules: { "import-x/no-default-export": "off" },
   },
@@ -393,27 +413,12 @@ export default [...baseConfig, ...nextjsConfig];
 ```
 
 Combine imports from all needed layers at the top. Always spread
-`baseConfig` first. The specific framework/exports vary by detection:
-
-Detection table for ESLint layers:
-
-| If dep found                 | Layers                                      |
-| ---------------------------- | ------------------------------------------- |
-| `next`                       | base + nextjs                               |
-| `@tanstack/react-start`      | base + react + tanstack-start               |
-| `fastify`                    | base + node + fastify                       |
-| `express`                    | base + node + express                       |
-| `react` (none of above)      | base + react                                |
-| none, but `"type": "module"` | base + node                                 |
-| otherwise                    | base                                        |
+`baseConfig` first. The specific framework/exports vary by detection (see
+framework detection table in the [Detection logic](#2-per-package-framework-detection) section).
 
 If Tailwind is detected alongside a React-based framework, add a
 `// ---- Tailwind config ----` section with the same content as
 `assets/eslint/tailwind.config.js`.
-
-> **Next.js note:** `eslint-config-next` already bundles React + React Hooks
-> rules, so Next.js gets `base + nextjs` only — no separate react layer.
-> TanStack Start IS NOT Next.js and still needs the react layer.
 
 > **Important**: Now that there's no `eslint/` subdirectory, generated config
 > files won't be picked up by the project's own ESLint. No need to add
@@ -449,27 +454,30 @@ use the `.json` extension — do NOT omit it.
 Also create a `.prettierignore`:
 
 ```
+.agents
 dist
 build
 .next
 out
 pnpm-lock.yaml
+package-lock.json
+yarn.lock
+bun.lock
 **/routeTree.gen.ts
 coverage
 ```
 
 ### 6. Knip
 
-Run `pnpm create @knip/config` to generate a `knip.json` tailored to the
-project's detected frameworks and structure. Add the script:
-
-```json
-"scripts": { "knip": "knip" }
-```
+Run `<package-manager> create @knip/config` to generate a `knip.json`
+tailored to the project's detected frameworks and structure. Then merge
+`".agents/**"` into the `ignore` field — at root level for single-package
+projects, or under `workspaces["."].ignore` for monorepos (the `"."`
+workspace is the root).
 
 ### 7. Add dependencies
 
-Run `pnpm add -D` to install the packages matching the detected layers. The
+Run `<package-manager> add -D` to install the packages matching the detected layers. The
 reference doc `eslint.md` lists every package grouped by layer. Install only
 what's needed based on detection.
 
