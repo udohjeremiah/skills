@@ -74,11 +74,16 @@ Read `package.json` `dependencies` + `devDependencies`:
 
 If `tailwindcss` is in deps:
 
-- Merge `assets/eslint/tailwind.js`
+- Find the CSS entry file by scanning for `@import "tailwindcss"` or
+  `@tailwind base`.
+- Merge `assets/eslint/tailwind.js` into the ESLint config. Set
+  `settings.better-tailwindcss.entryPoint` with the relative path to the CSS
+  entry file (used by `eslint-plugin-better-tailwindcss` to resolve the
+  Tailwind config and validate classes).
 - Merge `assets/prettier/tailwind.json`'s fields into the
-  base `.prettierrc.json` (adds `prettier-plugin-tailwindcss` and `tailwindFunctions`)
-- Find the CSS entry file by scanning for `@import "tailwindcss"`. Set its
-  relative path in `tailwindStylesheet` (Prettier).
+  base `.prettierrc.json` (adds `prettier-plugin-tailwindcss` and
+  `tailwindFunctions`). Set `tailwindStylesheet` to the same CSS entry
+  file path.
 
 ## Composition model
 

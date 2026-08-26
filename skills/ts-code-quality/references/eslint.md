@@ -52,7 +52,7 @@ every consumer. The root holds only the CLI tooling (`typescript`, `eslint`,
 
 ### Tailwind CSS layer (frontend only)
 
-- **eslint-plugin-tailwindcss** — Class ordering, no-custom-classname, no-contradicting-classname, no-unnecessary-arbitrary-value. Uses `flat/recommended` config. The v4 release supports Tailwind CSS v4 syntax.
+- **eslint-plugin-better-tailwindcss** — Formatting and linting rules for Tailwind CSS: class ordering, no-duplicate-classes, no-deprecated-classes, no-unknown-classes, no-conflicting-classes, shorthand enforcement, canonical class names, and more. Uses `recommended` config. Supports both Tailwind CSS v3 and v4.
 - **prettier-plugin-tailwindcss** — Prettier plugin that auto-sorts Tailwind classes in JSX/HTML.
 
 ### Monorepo layer

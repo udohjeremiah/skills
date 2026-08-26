@@ -1,13 +1,13 @@
 // @ts-check
 
-import tailwindcss from "eslint-plugin-tailwindcss";
+import betterTailwindcss from "eslint-plugin-better-tailwindcss";
 
 /** @type {import("eslint").Linter.Config[]} */
 const config = [
-  tailwindcss.configs["flat/recommended"],
+  betterTailwindcss.configs["recommended"],
   {
     rules: {
-      "tailwindcss/no-contradicting-classname": "error",
+      "better-tailwindcss/enforce-consistent-line-wrapping": "off",
     },
   },
 ];
