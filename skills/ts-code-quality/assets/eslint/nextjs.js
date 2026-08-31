@@ -18,6 +18,8 @@ const config = [
       "**/page.{js,jsx,tsx}",
       "**/global-error.{js,jsx,tsx}",
       "**/default.{js,jsx,tsx}",
+      "**/middleware.{js,jsx,ts,tsx}",
+      "**/proxy.{js,jsx,ts,tsx}",
       "next.config.*",
       "eslint.config.*",
     ],

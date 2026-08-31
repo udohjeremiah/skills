@@ -43,6 +43,7 @@ every consumer. The root holds only the CLI tooling (`typescript`, `eslint`,
 ### Next.js layer
 
 - **eslint-config-next** — Next.js-specific config (pages router, App Router, data fetching, image optimization). Spreads its exported array into the flat config.
+- `import-x/no-default-export` is disabled for the App Router file conventions that conventionally default-export — `layout`, `template`, `error`, `loading`, `not-found`, `page`, `global-error`, `default` — plus `proxy`/`middleware` (both support named and default exports), `next.config.*`, and `eslint.config.*`.
 
 ### Node / backend layer
 
@@ -58,10 +59,6 @@ every consumer. The root holds only the CLI tooling (`typescript`, `eslint`,
 ### Monorepo layer
 
 - Added **eslint-plugin-package-json** (by michaelfaith) — Validates `package.json` integrity across workspace packages. Recommended config checks fields, scripts, dependencies, exports, and repository metadata.
-
-### What is NOT included (handled by a separate commit hooks skill)
-
-- `husky`, `lint-staged`, `commitlint`, `commitizen` — These are out of scope.
 
 ## Flat config composition model
 
